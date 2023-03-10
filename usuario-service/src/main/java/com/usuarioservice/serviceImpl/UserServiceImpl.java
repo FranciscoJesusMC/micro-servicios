@@ -14,6 +14,7 @@ import com.usuarioservice.entity.Hotel;
 import com.usuarioservice.entity.Rating;
 import com.usuarioservice.entity.User;
 import com.usuarioservice.exceptions.ResourceNotFoundException;
+import com.usuarioservice.feignClients.HotelService;
 import com.usuarioservice.repository.UserRepository;
 import com.usuarioservice.service.UserService;
 
@@ -25,6 +26,9 @@ public class UserServiceImpl implements UserService {
 	
 	@Autowired
 	private RestTemplate restTemplate;
+	
+	@Autowired
+	private HotelService hotelService;
 
 	@Override
 	public User createUser(User user) {
@@ -38,22 +42,49 @@ public class UserServiceImpl implements UserService {
 		return userRepository.findAll();
 	}
 
+//	//RestTemplate
+//	@Override
+//	public User findUserById(String id) {
+//		User user = userRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("No se encontro el id: "+id));
+//		
+//		//Recuperamos en un array los ratigns del usuario
+//		Rating[] ratingsOfUser = restTemplate.getForObject("http://RATING-SERVICE/api/rating/user/"+user.getUserId(), Rating[].class);
+//		
+//		//Transformamos a una lista ese arreglo
+//		List<Rating> ratings = Arrays.asList(ratingsOfUser);
+//		
+//		//Recorremos cada rating para obtener el hotel y lo devolvemos juntos
+//		List<Rating> ratingList = ratings.stream().map(rating ->{
+//			
+//			ResponseEntity<Hotel> forEntity = restTemplate.getForEntity("http://HOTEL-SERVICE:8082/api/hotel/"+rating.getHotelId(), Hotel.class);
+//			Hotel hotel =forEntity.getBody();
+//			
+//			rating.setHotel(hotel);
+//			return rating;
+//			
+//		}).collect(Collectors.toList());
+//		
+//		user.setRatings(ratingList);
+//		
+//		return user;
+//	}
+	
+	//FeignClient
 	@Override
 	public User findUserById(String id) {
+		
 		User user = userRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("No se encontro el id: "+id));
 		
 		//Recuperamos en un array los ratigns del usuario
 		Rating[] ratingsOfUser = restTemplate.getForObject("http://RATING-SERVICE/api/rating/user/"+user.getUserId(), Rating[].class);
-		
+			
 		//Transformamos a una lista ese arreglo
 		List<Rating> ratings = Arrays.asList(ratingsOfUser);
 		
 		//Recorremos cada rating para obtener el hotel y lo devolvemos juntos
 		List<Rating> ratingList = ratings.stream().map(rating ->{
 			
-			ResponseEntity<Hotel> forEntity = restTemplate.getForEntity("http://HOTEL-SERVICE:8082/api/hotel/"+rating.getHotelId(), Hotel.class);
-			Hotel hotel =forEntity.getBody();
-			
+			Hotel hotel =hotelService.getHotel(rating.getHotelId());
 			rating.setHotel(hotel);
 			return rating;
 			
